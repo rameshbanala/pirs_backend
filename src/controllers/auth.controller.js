@@ -4,7 +4,7 @@ import {generateTokenAndSetCookie} from "../lib/utils/generateToken.js";
 
 export const signup = async (req, res) => {
   try {
-    const { fullName, username, email, password, role, departmentCode } = req.body;
+    const { fullName, username, email, password} = req.body;
     console.log("req.body",req.body)
     // Validate email format
     
@@ -33,32 +33,7 @@ export const signup = async (req, res) => {
       if (password.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters long" });
       }
-
-    // Validate role selection
-    if (!["citizen", "employee"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role selection" });
-    }
-
-    let assignedDepartment = null;
-
-    // If the user is an employee, validate departmentCode and assign department
-    if (role === "employee") {
-      if (!departmentCode) {
-        return res.status(400).json({ error: "Department code is required for employees" });
-      }
-
-      // Load department codes from environment variable
-      const departmentCodes = JSON.parse(process.env.DEPARTMENT_CODES);
-
-      // Find the department associated with the given code
-      assignedDepartment = Object.keys(departmentCodes).find(
-        (dept) => departmentCodes[dept] === departmentCode
-      );
-
-      if (!assignedDepartment) {
-        return res.status(400).json({ error: "Invalid department code" });
-      }
-    }
+    
 
     // Hash the password
     const salt = await bcrypt.genSalt(10);
@@ -70,8 +45,7 @@ export const signup = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role,
-      department: assignedDepartment, // Assign the department based on departmentCode
+      
     });
 
     // Save the user and generate token
@@ -83,8 +57,6 @@ export const signup = async (req, res) => {
             fullName: newUser.fullName,
             username: newUser.username,
             email: newUser.email,
-            role: newUser.role,
-            department: newUser.department,
             profileImg: newUser.profileImg,
             likedPosts: newUser.likedPosts,
             votes: newUser.votes,
@@ -128,8 +100,6 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       username: user.username,
       email: user.email,
-      role: user.role,
-      department: user.department,
       profileImg: user.profileImg,
       likedPosts: user.likedPosts,
       votes: user.votes,

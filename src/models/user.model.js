@@ -24,26 +24,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  role: {
-    type: String,
-    enum: ["citizen", "employee"],
-    required: true,
-  },
   department: {
     type: String,
-    enum: [
-      "Electricity",
-      "Sanitation",
-      "Roads",
-      "Traffic",
-      "Water",
-      "Health",
-      "Fire",
-      "Infrastructure",
-    ],
-    required: function () {
-      return this.role === "employee"; // Department is required only for employees
-    },
+    enum: ["Electricity", "Sanitation", "Roads", "Traffic", "Water", "Health", "Fire", "Infrastructure"],
+    unique: true, // Ensures only one user per department
   },
   likedPosts: [
     {
