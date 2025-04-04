@@ -16,6 +16,7 @@ app.use(express.urlencoded({extended:true}))
 
 
 app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes);
 
 app.listen(PORT,()=>{
     console.log(`Server is running on port ${PORT}`);

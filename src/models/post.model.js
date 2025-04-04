@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const PostSchema = new mongoose.Schema({
   user: {
@@ -21,17 +21,31 @@ const PostSchema = new mongoose.Schema({
     },
   },
   location: {
-    latitude: {
-      type: Number,
+    type: {
+      type: String, // GeoJSON type
+      enum: ["Point"], // Only 'Point' is allowed
       required: true,
     },
-    longitude: {
-      type: Number,
+    coordinates: {
+      type: [Number], // Array of numbers [longitude, latitude]
       required: true,
     },
     address: {
       type: String, // Optional, human-readable address
     },
+  },
+  description: {
+    type: String, // Description of the post
+    required: true, // Make it required if every post must have a description
+  },
+  assigned_department: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User", // Reference to the user (department) assigned to handle the post
+  },
+  status: {
+    type: String,
+    enum: ["pending", "in-progress", "resolved"], // Allowed status values
+    default: "pending", // Default status when a post is created
   },
   likes: [
     {
@@ -65,4 +79,7 @@ const PostSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Post", PostSchema);
+// Add a 2dsphere index for geospatial queries on the location field
+PostSchema.index({ location: "2dsphere" });
+const Post = mongoose.model("Post", PostSchema);
+export default Post;
