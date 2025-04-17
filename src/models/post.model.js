@@ -73,11 +73,8 @@ const PostSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User", // Users who upvoted
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  
+},{timestamps: true});
 
 // Add a 2dsphere index for geospatial queries on the location field
 PostSchema.index({ location: "2dsphere" });
