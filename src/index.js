@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.route.js";
 import postRoutes from "./routes/post.route.js";
 import connectMongoDB from "./db/connectMongoDB.js";
 import {v2 as cloudinary} from "cloudinary";
+import cors from 'cors';
 dotenv.config();
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -14,6 +15,10 @@ cloudinary.config({
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({
+  origin: "http://localhost:5173", // your React frontend
+  credentials: true, // allow cookies / headers
+}))
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
