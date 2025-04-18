@@ -2,7 +2,6 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
-import { log } from "console";
 // import cloudinary from "../config/cloudinary.js";
 // export const createPost = async (req, res) => {
 // 	try {
@@ -187,21 +186,17 @@ export const createPost = async (req, res) => {
   try {
 	// console.log(req.body)
     const { labels, location, description } = req.body;
-
-    const filePath = "D:/projects/pirs_backend/src/lib/images/45.jpg";
-    // console.log(fs.existsSync(filePath)); // Check if the file exists
-
-    const image = convertImageToBase64(filePath);
-    // Step 1: Upload image to Cloudinary
-    // console.log("Uploading image to Cloudinary...");
+    let { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: "Image is required." });
+    }  
     const result = await cloudinary.uploader
       .upload(image)
       .catch((error) => {
         console.error("Cloudinary Upload Error:", error);
         throw error;
       });
-	// console.log(result)
-	// console.log(req.user._id)
+	
     // Step 2: Create a new post with the Cloudinary image URL
     const newPost = new Post({
       user: req.user._id, // Assuming user info is available from the protected route
@@ -218,5 +213,45 @@ export const createPost = async (req, res) => {
   } catch (error) {
 	console.error("Error saving post to mongodb",error)
     res.status(500).json({ error: "Failed to create post or upload imageeee" });
+  }
+};
+
+
+// Function to update a post
+export const updatePost = async (req, res) => {
+  try {
+    const { id } = req.params; // Extract the post ID from the route parameter
+    const { resolvedImage } = req.body; // Resolved image (base64 or file path)
+
+    if (!resolvedImage) {
+      return res.status(400).json({ error: "Resolved image is required." });
+    }
+
+    // Upload the resolved image to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(resolvedImage);
+    const resolvedImageUrl = uploadResult.secure_url;
+
+    if (!resolvedImageUrl) {
+      return res.status(500).json({ error: "Failed to upload image to Cloudinary." });
+    }
+
+    // Find the post by ID and update it
+    const updatedPost = await Post.findByIdAndUpdate(
+      id,
+      {
+        afterImageUrl: resolvedImageUrl, // Save the resolved image URL
+        status: "resolved", // Update the status to "resolved"
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedPost) {
+      return res.status(404).json({ error: "Post not found." });
+    }
+
+    res.status(200).json({ message: "Post updated successfully.", post: updatedPost });
+  } catch (error) {
+    console.error("Update Post Error:", error);
+    res.status(500).json({ error: "Failed to update post." });
   }
 };

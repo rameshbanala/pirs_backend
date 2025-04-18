@@ -10,6 +10,10 @@ const PostSchema = new mongoose.Schema({
     type: String,
     required: true, // URL of the uploaded image
   },
+  afterImageUrl: {
+    type: String,
+     // URL of the uploaded image
+  },
   labels: {
     mainCategory: {
       type: String, // e.g., "Electricity"
@@ -44,7 +48,7 @@ const PostSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "in-progress", "resolved"], // Allowed status values
+    enum: ["pending", "resolved"], // Allowed status values, "in-progress"
     default: "pending", // Default status when a post is created
   },
   likes: [
