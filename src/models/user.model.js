@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   department: {
     type: String,
     enum: ["Electricity", "Sanitation", "Roads", "Traffic", "Water", "Health", "Fire", "Infrastructure"],
-    unique: true, // Ensures only one user per department
+    // unique: true, // Ensures only one user per department
   },
   likedPosts: [
     {
