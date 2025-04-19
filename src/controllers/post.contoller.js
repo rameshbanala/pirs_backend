@@ -77,6 +77,26 @@ export const getUserPosts = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch user posts" });
   }
 };
+export const getDepartmentPosts = async (req, res) => {
+  try {
+    const department = req.params.department;
+
+    // Case-insensitive search for labels.mainCategory
+    const posts = await Post.find({
+      "labels.mainCategory": { $regex: new RegExp(`^${department}$`, "i") }
+    }).populate("user");
+
+    if (!posts || posts.length === 0) {
+      return res.status(404).json({ error: "No posts found for this department" });
+    }
+
+    res.status(200).json(posts);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch department posts" });
+  }
+};
+
+
 
 export const likeUnlikePost = async (req, res) => {
 	try {
@@ -142,9 +162,9 @@ export const deletePost = async (req, res) => {
 	  // Step 1: Find the post by ID
 	  const post = await Post.findById(req.params.id);
 	  if (!post) return res.status(404).json({ error: "Post not found" });
-  
+    // compare them 
 	  // Step 2: Check if the user is authorized to delete the post
-	  if (post.user.toString() !== req.user._id) {
+	  if (post.user.toString() != req.user._id.toString()) {
 		return res.status(403).json({ error: "Unauthorized action" });
 	  }
   

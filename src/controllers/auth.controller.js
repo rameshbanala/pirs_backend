@@ -80,15 +80,16 @@ export const login = async (req, res) => {
 
     // Find user by email
     const user = await User.findOne({ email });
+    console.log("user",user)
 
     // Check if user exists and if the password is correct
     if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: "Invalid email" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: " password doesnt match" });
     }
 
     // Generate token and set cookie
@@ -104,6 +105,7 @@ export const login = async (req, res) => {
       likedPosts: user.likedPosts,
       votes: user.votes,
       createdAt: user.createdAt,
+      department:user.department,
     });
 
   } catch (error) {
