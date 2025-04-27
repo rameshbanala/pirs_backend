@@ -1,8 +1,5 @@
 import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
-
-// models
-// import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
 
 export const getUserProfile = async (req, res) => {
@@ -54,20 +51,10 @@ export const updateUser = async (req, res) => {
 			profileImg = uploadedResponse.secure_url;
 		}
 
-		// if (coverImg) {
-		// 	if (user.coverImg) {
-		// 		await cloudinary.uploader.destroy(user.coverImg.split("/").pop().split(".")[0]);
-		// 	}
-
-		// 	const uploadedResponse = await cloudinary.uploader.upload(coverImg);
-		// 	coverImg = uploadedResponse.secure_url;
-		// }
 
 		user.fullName = fullName || user.fullName;
 		user.email = email || user.email;
 		user.username = username || user.username;
-		
-		user.link = link || user.link;
 		user.profileImg = profileImg || user.profileImg;
 		
 
