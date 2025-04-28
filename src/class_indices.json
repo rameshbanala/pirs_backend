@@ -1,10 +1,16 @@
 {
   "0": "Broken Hydrants",
   "1": "Contaminated Water",
-  "2": "Dirty Toilets",
-  "3": "Open Manholes",
-  "4": "Potholes",
-  "5": "Public Taps",
-  "6": "Streetlights",
-  "7": "Traffic"
+  "2": "Damaged Benches",
+  "3": "Damaged Roads",
+  "4": "Damaged Transformer",
+  "5": "Dead Animals",
+  "6": "Dirty Toilets",
+  "7": "Fire Hazard",
+  "8": "Graffiti",
+  "9": "Open Manholes",
+  "10": "Potholes",
+  "11": "Public Taps",
+  "12": "Streetlights",
+  "13": "Traffic"
 }

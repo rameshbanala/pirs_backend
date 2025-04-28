@@ -35,6 +35,38 @@ import { v2 as cloudinary } from "cloudinary";
 // 	}
 // };
 
+// post.controller.js
+export const getPostLocations = async (req, res) => {
+  try {
+    const userId = req.user._id; // From protectRoute middleware
+
+    const posts = await Post.find(
+      {},
+      {
+        _id: 1,
+        "location.coordinates": 1,
+        "location.address": 1,
+        "labels.mainCategory": 1,
+        "labels.subCategory": 1,
+        imageUrl: 1,
+        status: 1,
+        description: 1,
+        user: 1,
+      }
+    ).lean();
+
+    // Add user post identification
+    const postsWithOwnership = posts.map((post) => ({
+      ...post,
+      isUserPost: post.user.toString() === userId.toString(),
+    }));
+
+    res.status(200).json(postsWithOwnership);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch post locations" });
+  }
+};
+
 export const getAllPosts = async (req, res) => {
   try {
     const posts = await Post.find()
@@ -67,7 +99,7 @@ export const getLikedPosts = async (req, res) => {
 };
 export const getUserPosts = async (req, res) => {
   try {
-	// console.log("hiii")
+    // console.log("hiii")
     const user = await User.findOne({ username: req.params.username });
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -83,11 +115,13 @@ export const getDepartmentPosts = async (req, res) => {
 
     // Case-insensitive search for labels.mainCategory
     const posts = await Post.find({
-      "labels.mainCategory": { $regex: new RegExp(`^${department}$`, "i") }
+      "labels.mainCategory": { $regex: new RegExp(`^${department}$`, "i") },
     }).populate("user");
 
     if (!posts || posts.length === 0) {
-      return res.status(404).json({ error: "No posts found for this department" });
+      return res
+        .status(404)
+        .json({ error: "No posts found for this department" });
     }
 
     res.status(200).json(posts);
@@ -96,48 +130,48 @@ export const getDepartmentPosts = async (req, res) => {
   }
 };
 
-
-
 export const likeUnlikePost = async (req, res) => {
-	try {
-		const userId = req.user._id;
-		const { id: postId } = req.params;
+  try {
+    const userId = req.user._id;
+    const { id: postId } = req.params;
 
-		const post = await Post.findById(postId);
+    const post = await Post.findById(postId);
 
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
 
-		const userLikedPost = post.likes.includes(userId);
+    const userLikedPost = post.likes.includes(userId);
 
-		if (userLikedPost) {
-			// Unlike post
-			await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
-			await User.updateOne({ _id: userId }, { $pull: { likedPosts: postId } });
+    if (userLikedPost) {
+      // Unlike post
+      await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
+      await User.updateOne({ _id: userId }, { $pull: { likedPosts: postId } });
 
-			const updatedLikes = post.likes.filter((id) => id.toString() !== userId.toString());
-			res.status(200).json(updatedLikes);
-		} else {
-			// Like post
-			post.likes.push(userId);
-			await User.updateOne({ _id: userId }, { $push: { likedPosts: postId } });
-			await post.save();
+      const updatedLikes = post.likes.filter(
+        (id) => id.toString() !== userId.toString()
+      );
+      res.status(200).json(updatedLikes);
+    } else {
+      // Like post
+      post.likes.push(userId);
+      await User.updateOne({ _id: userId }, { $push: { likedPosts: postId } });
+      await post.save();
 
-			// const notification = new Notification({
-			// 	from: userId,
-			// 	to: post.user,
-			// 	type: "like",
-			// });
-			// await notification.save();
+      // const notification = new Notification({
+      // 	from: userId,
+      // 	to: post.user,
+      // 	type: "like",
+      // });
+      // await notification.save();
 
-			const updatedLikes = post.likes;
-			res.status(200).json(updatedLikes);
-		}
-	} catch (error) {
-		console.log("Error in likeUnlikePost controller: ", error);
-		res.status(500).json({ error: "Internal server error" });
-	}
+      const updatedLikes = post.likes;
+      res.status(200).json(updatedLikes);
+    }
+  } catch (error) {
+    console.log("Error in likeUnlikePost controller: ", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 export const commentOnPost = async (req, res) => {
   try {
@@ -158,36 +192,38 @@ export const commentOnPost = async (req, res) => {
   }
 };
 export const deletePost = async (req, res) => {
-	try {
-	  // Step 1: Find the post by ID
-	  const post = await Post.findById(req.params.id);
-	  if (!post) return res.status(404).json({ error: "Post not found" });
-    // compare them 
-	  // Step 2: Check if the user is authorized to delete the post
-	  if (post.user.toString() != req.user._id.toString()) {
-		return res.status(403).json({ error: "Unauthorized action" });
-	  }
-  
-	  // Step 3: Extract the public_id from the Cloudinary URL
-	  const publicId = post.imageUrl.split('/').slice(-1)[0].split('.')[0]; // Extract public_id
-  
-	  // Step 4: Delete the image from Cloudinary
-	  await cloudinary.uploader.destroy(publicId, (error, result) => {
-		if (error) {
-		  console.error("Cloudinary Delete Error:", error);
-		  throw error; // Fail gracefully if image deletion fails
-		}
-		console.log("Cloudinary Image Deleted Successfully:", result);
-	  });
-  
-	  // Step 5: Delete the post from the database
-	  await Post.findByIdAndDelete(req.params.id);
-	  res.status(200).json({ message: "Post and associated image deleted successfully" });
-	} catch (error) {
-	  console.error("Error in deletePost:", error.message);
-	  res.status(500).json({ error: "Failed to delete post and/or image" });
-	}
-  };
+  try {
+    // Step 1: Find the post by ID
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    // compare them
+    // Step 2: Check if the user is authorized to delete the post
+    if (post.user.toString() != req.user._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized action" });
+    }
+
+    // Step 3: Extract the public_id from the Cloudinary URL
+    const publicId = post.imageUrl.split("/").slice(-1)[0].split(".")[0]; // Extract public_id
+
+    // Step 4: Delete the image from Cloudinary
+    await cloudinary.uploader.destroy(publicId, (error, result) => {
+      if (error) {
+        console.error("Cloudinary Delete Error:", error);
+        throw error; // Fail gracefully if image deletion fails
+      }
+      console.log("Cloudinary Image Deleted Successfully:", result);
+    });
+
+    // Step 5: Delete the post from the database
+    await Post.findByIdAndDelete(req.params.id);
+    res
+      .status(200)
+      .json({ message: "Post and associated image deleted successfully" });
+  } catch (error) {
+    console.error("Error in deletePost:", error.message);
+    res.status(500).json({ error: "Failed to delete post and/or image" });
+  }
+};
 
 const convertImageToBase64 = (filePath) => {
   try {
@@ -204,19 +240,17 @@ const convertImageToBase64 = (filePath) => {
 
 export const createPost = async (req, res) => {
   try {
-	// console.log(req.body)
+    // console.log(req.body)
     const { labels, location, description } = req.body;
     let { image } = req.body;
     if (!image) {
       return res.status(400).json({ error: "Image is required." });
-    }  
-    const result = await cloudinary.uploader
-      .upload(image)
-      .catch((error) => {
-        console.error("Cloudinary Upload Error:", error);
-        throw error;
-      });
-	
+    }
+    const result = await cloudinary.uploader.upload(image).catch((error) => {
+      console.error("Cloudinary Upload Error:", error);
+      throw error;
+    });
+
     // Step 2: Create a new post with the Cloudinary image URL
     const newPost = new Post({
       user: req.user._id, // Assuming user info is available from the protected route
@@ -231,11 +265,10 @@ export const createPost = async (req, res) => {
     res.status(201).json(savedPost);
     // console.log(req.user)
   } catch (error) {
-	console.error("Error saving post to mongodb",error)
+    console.error("Error saving post to mongodb", error);
     res.status(500).json({ error: "Failed to create post or upload imageeee" });
   }
 };
-
 
 // Function to update a post
 export const updatePost = async (req, res) => {
@@ -252,7 +285,9 @@ export const updatePost = async (req, res) => {
     const resolvedImageUrl = uploadResult.secure_url;
 
     if (!resolvedImageUrl) {
-      return res.status(500).json({ error: "Failed to upload image to Cloudinary." });
+      return res
+        .status(500)
+        .json({ error: "Failed to upload image to Cloudinary." });
     }
 
     // Find the post by ID and update it
@@ -269,7 +304,9 @@ export const updatePost = async (req, res) => {
       return res.status(404).json({ error: "Post not found." });
     }
 
-    res.status(200).json({ message: "Post updated successfully.", post: updatedPost });
+    res
+      .status(200)
+      .json({ message: "Post updated successfully.", post: updatedPost });
   } catch (error) {
     console.error("Update Post Error:", error);
     res.status(500).json({ error: "Failed to update post." });
