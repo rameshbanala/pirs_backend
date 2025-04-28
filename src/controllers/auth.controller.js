@@ -133,3 +133,11 @@ export const getMe = async (req, res) => {
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
+
+export const getToken=async(req, res) => {
+  const token = req.cookies.jwt; // Access HttpOnly cookie in backend
+  if (!token) {
+      return res.status(401).json({ message: "No token found" });
+  }
+  res.status(200).json({ token });
+}
