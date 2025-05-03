@@ -1,25 +1,21 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
-
+import crypto from "crypto";
+import { sendOTPEmail } from "../lib/utils/sendMail.js";
+import dotenv from "dotenv";
+dotenv.config();
 import { OAuth2Client } from "google-auth-library";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const signup = async (req, res) => {
   try {
     const { fullName, username, email, password } = req.body;
-    console.log("req.body", req.body);
-    // Validate email format
 
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: "Invalid email format" });
-    }
-
-    // Check if username is already taken
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ error: "Username is already taken" });
     }
 
     // Check if email is already registered
@@ -29,11 +25,7 @@ export const signup = async (req, res) => {
     }
 
     // Validate password length
-    if (!password) {
-      return res.status(400).json({ error: "Password is required" });
-    }
-
-    if (password.length < 6) {
+    if (!password || password.length < 6) {
       return res
         .status(400)
         .json({ error: "Password must be at least 6 characters long" });
@@ -43,35 +35,37 @@ export const signup = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Generate OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+
     // Create new user
     const newUser = new User({
       fullName,
       username,
       email,
       password: hashedPassword,
+      otp: {
+        code: otp,
+        expiresAt: Date.now() + 10 * 60 * 1000, // OTP expires in 10 minutes
+      },
     });
 
-    // Save the user and generate token
-    if (newUser) {
-      await newUser.save();
-      generateTokenAndSetCookie(newUser._id, res);
-      res.status(201).json({
-        _id: newUser._id,
-        fullName: newUser.fullName,
-        username: newUser.username,
-        email: newUser.email,
-        profileImg: newUser.profileImg,
-        likedPosts: newUser.likedPosts,
-        votes: newUser.votes,
-        createdAt: newUser.createdAt,
+    // Save user (without verification for now)
+    await newUser.save();
+
+    // Send OTP to the user via email
+    await sendOTPEmail(email, otp);
+
+    res
+      .status(201)
+      .json({
+        message: "User registered. Please verify your email with the OTP sent.",
       });
-    }
   } catch (error) {
     console.error("Error in signup controller:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;

@@ -64,6 +64,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  otp: {
+    code: String,
+    expiresAt: Date,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   method: {
     type: String,
     enum: ["local", "google"],
