@@ -1,17 +1,46 @@
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/auth.route.js";
-import postRoutes from "./routes/post.route.js";
-import userRoutes from "./routes/user.route.js";
-import connectMongoDB from "./db/connectMongoDB.js";
-import { v2 as cloudinary } from "cloudinary";
+import session from "express-session";
+import passport from "passport";
 import path from "path";
 import cors from "cors";
 import multer from "multer";
 import { PythonShell } from "python-shell";
+import { v2 as cloudinary } from "cloudinary";
+
+import connectMongoDB from "./db/connectMongoDB.js";
+import authRoutes from "./routes/auth.route.js";
+import postRoutes from "./routes/post.route.js";
+import userRoutes from "./routes/user.route.js";
+
+import "./config/passport.js";
 
 dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Secure trust proxy
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -19,16 +48,14 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
-app.use(express.json({limit:"10mb"}));
+
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,29 +63,22 @@ app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/users", userRoutes);
 
-// Multer for in-memory file upload
+// Multer for image upload
 const upload = multer({ storage: multer.memoryStorage() });
-
-// Cloudinary stream upload wrapped in a Promise
-const streamUpload = (fileBuffer) => {
-  return new Promise((resolve, reject) => {
+const streamUpload = (fileBuffer) =>
+  new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { resource_type: "image" },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
+      (error, result) => (error ? reject(error) : resolve(result))
     );
     stream.end(fileBuffer);
   });
-};
 
 app.post("/predict", upload.single("image"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   try {
     const uploadResult = await streamUpload(req.file.buffer);
-
     const options = {
       mode: "text",
       pythonOptions: ["-u"],
@@ -69,27 +89,19 @@ app.post("/predict", upload.single("image"), async (req, res) => {
     let outputData = "";
     const pyshell = new PythonShell(path.join("src", "predict.py"), options);
 
-    pyshell.on("message", (message) => {
-      outputData += message;
-    });
-
+    pyshell.on("message", (message) => (outputData += message));
     pyshell.end((err) => {
-      if (err) {
-        console.error("Python error:", err); // 🔍 Full traceback
-        return res.status(500).json({ error: "Python script failed" });
-      }
+      if (err) return res.status(500).json({ error: "Python script failed" });
 
       try {
-        console.log("Python output:", outputData); // 🔍 Print raw output
         const prediction = JSON.parse(outputData);
         res.json(prediction);
-      } catch (parseError) {
-        console.error("JSON Parse Error:", parseError);
-        res.status(500).json({ error: "Failed to parse prediction output" });
+      } catch (e) {
+        res.status(500).json({ error: "Invalid JSON from Python" });
       }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message || "Internal server error" });
+    res.status(500).json({ error: err.message || "Internal error" });
   }
 });
 

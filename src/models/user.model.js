@@ -3,8 +3,13 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
     unique: true,
+    sparse: true,
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
   profileImg: {
     type: String,
@@ -16,18 +21,30 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: function () {
+      return this.method === "local";
+    },
     unique: true,
   },
   password: {
     type: String,
-    required: true,
+    required: function () {
+      return this.method === "local";
+    },
     minlength: 6,
   },
   department: {
     type: String,
-    enum: ["Electricity", "Sanitation", "Roads", "Traffic", "Water", "Health", "Fire", "Infrastructure"],
-    // unique: true, // Ensures only one user per department
+    enum: [
+      "Electricity",
+      "Sanitation",
+      "Roads",
+      "Traffic",
+      "Water",
+      "Health",
+      "Fire",
+      "Infrastructure",
+    ],
   },
   likedPosts: [
     {
@@ -46,6 +63,12 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  method: {
+    type: String,
+    enum: ["local", "google"],
+    required: true,
+    default: "local",
   },
 });
 
